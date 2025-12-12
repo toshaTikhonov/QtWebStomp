@@ -1,4 +1,3 @@
-#pragma once
 #include "QTWebStompClientDll.h"
 
 using namespace std;
@@ -20,7 +19,8 @@ StompMessage::StompMessage(const char* rawMessage)
 			first = false;
 			continue;
 		}
-		std::string value = header.substr(++pos, header.length() - pos);
+		++pos;
+		std::string value = header.substr(pos, header.length() - pos);
 		m_headers[key] = value;
 	}
 }
@@ -81,7 +81,7 @@ vector<string> StompMessage::messageToVector(const string& str, const string& de
 
 QTWebStompClient::QTWebStompClient(const char* url, const char* login, const char* passcode, void(*onConnected)(void), const char* vHost, bool debug, QObject *parent)
 {
-	QUrl myUrl(QString(url));
+	QUrl myUrl{QString(url)};
 	m_debug = debug;
 	m_login = login;
 	m_passcode = passcode;
@@ -105,7 +105,7 @@ QTWebStompClient::QTWebStompClient(const char* url, const char* login, const cha
 void QTWebStompClient::onConnected()
 {
 	if (m_debug) {
-		qDebug() << "-----------------------" << endl << "Connected to Websocket!" << endl << "-----------------------" << endl;
+		qDebug() << "-----------------------" << Qt::endl << "Connected to Websocket!" << Qt::endl << "-----------------------" << Qt::endl;
 	}
 	connect(&m_webSocket, &QWebSocket::textMessageReceived, this, &QTWebStompClient::onTextMessageReceived);
 
@@ -142,7 +142,7 @@ void QTWebStompClient::onTextMessageReceived(QString message)
 			if (stompMessage.m_messageType == "CONNECTED")
 			{
 				if (m_debug) {
-					qDebug() << "--------------------" << endl << "Connected to STOMP!" << endl << "--------------------" << endl;
+					qDebug() << "--------------------" << Qt::endl << "Connected to STOMP!" << Qt::endl << "--------------------" << Qt::endl;
 				}
 				m_connectionState = Connected;
 				if (this->m_onConnectedCallback == NULL)
@@ -170,7 +170,7 @@ void QTWebStompClient::onTextMessageReceived(QString message)
 			// TODO: Improve check, maybe different messages are allowed when subscribed
 			if (stompMessage.m_messageType == "MESSAGE") {
 				if (m_debug) {
-					qDebug() << "Message received from queue!" << endl << stompMessage.toString().c_str();
+					qDebug() << "Message received from queue!" << Qt::endl << stompMessage.toString().c_str();
 				}
 
 				m_onMessageCallback(stompMessage);
@@ -270,9 +270,10 @@ void QTWebStompClient::Send(const StompMessage & stompMessage)
 	m_webSocket.sendTextMessage(sendFrameMessage);
 }
 
-void QTWebStompClient::Send(const char* destination, const char* message, map<std::string, std::string> &headers)
+void QTWebStompClient::Send(const char* destination, const char* message, const map<std::string, std::string> &headers)
 {
-	headers[std::string("destination")] = std::string(destination);
-	StompMessage s("SEND", headers, message);
+	map<std::string, std::string> headersWithDestination = headers;
+	headersWithDestination[std::string("destination")] = std::string(destination);
+	StompMessage s("SEND", headersWithDestination, message);
 	Send(s);
 }
