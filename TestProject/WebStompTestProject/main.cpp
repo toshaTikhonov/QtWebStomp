@@ -6,7 +6,7 @@ QTWebStompClient* myClient;
 
 void onMessage(const StompMessage &s)
 {
-	qDebug() << "The message we got is\r\n" << s.toString().c_str();
+	qDebug() << "The message we got is\r\n" << s.toString();
 	myClient->Ack(s); // you can either specify the entire message as a parameter of ack or just the id you wanna ack.
 
 	myClient->Send("/queue/agent", "this is my infinite loop");

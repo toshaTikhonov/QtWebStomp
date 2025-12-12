@@ -1,18 +1,17 @@
 #include "QTWebStompClientDll.h"
+#include <QtCore/QDebug>
 
-using namespace std;
-
-StompMessage::StompMessage(const char* rawMessage) 
+StompMessage::StompMessage(const char* rawMessage)
 {
-	std::string strMessage(rawMessage);
-	vector<std::string> messageVector = messageToVector(strMessage, "\n");
+	QString strMessage(rawMessage);
+	QList<QString> messageVector = messageToVector(strMessage, "\n");
 	m_message = messageVector.back(); // deep copies
 	messageVector.pop_back();
 	bool first = true;
 	for (const auto& header : messageVector)
 	{
-		size_t pos = header.find_first_of(':', 0);
-		std::string key = header.substr(0, pos);
+		int pos = header.indexOf(':', 0);
+		QString key = header.mid(0, pos);
 		if (first)
 		{
 			m_messageType = key;
@@ -20,24 +19,24 @@ StompMessage::StompMessage(const char* rawMessage)
 			continue;
 		}
 		++pos;
-		std::string value = header.substr(pos, header.length() - pos);
+		QString value = header.mid(pos, header.length() - pos);
 		m_headers[key] = value;
 	}
 }
 
-StompMessage::StompMessage(string messageType, map<string, string> headers, const char* messageBody)
+StompMessage::StompMessage(const QString& messageType, const QMap<QString, QString>& headers, const char* messageBody)
 {
-	m_messageType = std::string(messageType);
-	m_message = messageBody;
+	m_messageType = messageType;
+	m_message = QString(messageBody);
 	m_headers = headers;
 }
 
-std::string StompMessage::toString() const
+QString StompMessage::toString() const
 {
-	std::string result = m_messageType + "\u000A";
-	for (const auto &header : m_headers)
+	QString result = m_messageType + "\u000A";
+	for (auto it = m_headers.constBegin(); it != m_headers.constEnd(); ++it)
 	{
-		result += header.first + ":" + header.second + "\u000A";
+		result += it.key() + ":" + it.value() + "\u000A";
 	}
 
 	result += "\u000A" + m_message + "\u0000";
@@ -45,24 +44,24 @@ std::string StompMessage::toString() const
 	return result;
 }
 
-vector<string> StompMessage::messageToVector(const string& str, const string& delim)
+QList<QString> StompMessage::messageToVector(const QString& str, const QString& delim)
 {
-	vector<string> messageParts;
-	size_t prev = 0, pos = 0;
+	QList<QString> messageParts;
+	int prev = 0, pos = 0;
 	bool last = false;
 	do
 	{
 		if (last)
 		{
-			auto message = str.substr(prev, str.length() - prev);
+			QString message = str.mid(prev, str.length() - prev);
 			messageParts.push_back(message);
 			break;
 		}
 
-		pos = str.find(delim, prev);
-		if (pos == string::npos) pos = str.length();
-		string token = str.substr(prev, pos - prev);
-		if (!token.empty())
+		pos = str.indexOf(delim, prev);
+		if (pos == -1) pos = str.length();
+		QString token = str.mid(prev, pos - prev);
+		if (!token.isEmpty())
 		{
 			messageParts.push_back(token);
 		}
@@ -92,8 +91,8 @@ QTWebStompClient::QTWebStompClient(const char* url, const char* login, const cha
 	m_vHost = vHost;
 
 	connect(&m_webSocket, &QWebSocket::connected, this, &QTWebStompClient::onConnected);
-	
-	
+
+
 	connect(&m_webSocket, (&QWebSocket::sslErrors),
 		this, &QTWebStompClient::onSslErrors);
 
@@ -130,15 +129,15 @@ void QTWebStompClient::onConnected()
 
 void QTWebStompClient::onTextMessageReceived(QString message)
 {
-	StompMessage stompMessage(message.toStdString().c_str());
+	StompMessage stompMessage(message.toUtf8().constData());
 
 	switch (m_connectionState) {
-		
+
 		case Connecting:
 			if (m_debug) {
-				qDebug() << "Connection response: " << stompMessage.toString().c_str();
+				qDebug() << "Connection response: " << stompMessage.toString();
 			}
-		
+
 			if (stompMessage.m_messageType == "CONNECTED")
 			{
 				if (m_debug) {
@@ -148,7 +147,7 @@ void QTWebStompClient::onTextMessageReceived(QString message)
 				if (this->m_onConnectedCallback == NULL)
 				{
 					qDebug() << "WARNING: No callback selected for connection";
-					throw runtime_error("No onConnect callback set!");
+					qFatal("No onConnect callback set!");
 				}
 				else
 				{
@@ -159,10 +158,10 @@ void QTWebStompClient::onTextMessageReceived(QString message)
 			{
 				if (m_debug)
 				{
-					qDebug() << "Message type CONNECTED expected, got " << stompMessage.m_messageType.c_str();
+					qDebug() << "Message type CONNECTED expected, got " << stompMessage.m_messageType;
 				}
 
-				throw runtime_error("Message type CONNECTED expected, got" + stompMessage.toString());
+				qFatal("Message type CONNECTED expected, got: %s", qPrintable(stompMessage.toString()));
 			}
 			break;
 
@@ -170,18 +169,20 @@ void QTWebStompClient::onTextMessageReceived(QString message)
 			// TODO: Improve check, maybe different messages are allowed when subscribed
 			if (stompMessage.m_messageType == "MESSAGE") {
 				if (m_debug) {
-					qDebug() << "Message received from queue!" << Qt::endl << stompMessage.toString().c_str();
+					qDebug() << "Message received from queue!" << Qt::endl << stompMessage.toString();
 				}
 
 				m_onMessageCallback(stompMessage);
 			}
 			else {
-				throw runtime_error("Message type MESSAGE expected, got" + stompMessage.m_messageType + ". Message is : " +stompMessage.toString());
+				qFatal("Message type MESSAGE expected, got: %s. Message is: %s",
+					qPrintable(stompMessage.m_messageType),
+					qPrintable(stompMessage.toString()));
 			}
 			break;
 
 		default:
-			throw runtime_error("Unsupported connection state");
+			qFatal("Unsupported connection state");
 			break;
 	}
 
@@ -193,11 +194,11 @@ void QTWebStompClient::Subscribe(const char* queueName, void(*onMessageCallback)
 	if (m_connectionState != Connected)
 	{
 		// For now, if you need to subscribe to 2 queues, you can create two instances of the client. Later an improvement would be to use the id variables of the underlying websocket lib.
-		throw runtime_error("Cannot subscribe when connection hasn't finished or when already subscribed. Try using the callback function for onConnect to subscribe");
+		qFatal("Cannot subscribe when connection hasn't finished or when already subscribed. Try using the callback function for onConnect to subscribe");
 	}
-	map<string, string> headers;
+	QMap<QString, QString> headers;
 	headers["id"] = "0";
-	headers["destination"] = std::string(queueName);
+	headers["destination"] = QString(queueName);
 	switch (ackMode) {
 		case Client:
 			headers["ack"] = "client";
@@ -214,7 +215,7 @@ void QTWebStompClient::Subscribe(const char* queueName, void(*onMessageCallback)
 
 	StompMessage myMessage("SUBSCRIBE", headers, "");
 
-	auto subscribeMessage = QString(myMessage.toString().c_str());
+	QString subscribeMessage = myMessage.toString();
 	QString subscribeFrame = QString(subscribeMessage.data(), subscribeMessage.size() + 1);
 
 	m_webSocket.sendTextMessage(subscribeFrame);
@@ -224,19 +225,19 @@ void QTWebStompClient::Subscribe(const char* queueName, void(*onMessageCallback)
 
 void QTWebStompClient::onSslErrors(const QList<QSslError> &errors)
 {
-	throw runtime_error("SSL error! I'd show the error description if there were an easy way to convert from enum to string in c++. You'll have to debug.");
+	qFatal("SSL error! I'd show the error description if there were an easy way to convert from enum to string in c++. You'll have to debug.");
 }
 
 void QTWebStompClient::closed()
 {
 	qDebug() << "Connection closed =(";
-	throw runtime_error("Underlying connection unexpectedly closed =(");
+	qFatal("Underlying connection unexpectedly closed =(");
 }
 
 void QTWebStompClient::Ack(const StompMessage & s)
 {
-	auto ack = s.m_headers.at(std::string("ack"));
-	Ack(ack.c_str());
+	QString ack = s.m_headers.value("ack");
+	Ack(ack.toUtf8().constData());
 }
 
 void QTWebStompClient::Ack(const char* id)
@@ -254,26 +255,25 @@ void QTWebStompClient::Ack(const char* id)
 void QTWebStompClient::Send(const StompMessage & stompMessage)
 {
 	if (m_debug) {
-		qDebug() << "Sending message: " << stompMessage.toString().c_str();
+		qDebug() << "Sending message: " << stompMessage.toString();
 	}
 
-	std::string sendFrame = std::string(stompMessage.m_messageType+"\u000A");
-	for (auto &header : stompMessage.m_headers)
+	QString sendFrame = stompMessage.m_messageType + "\u000A";
+	for (auto it = stompMessage.m_headers.constBegin(); it != stompMessage.m_headers.constEnd(); ++it)
 	{
-		sendFrame += header.first + ":" + header.second + "\u000A";
+		sendFrame += it.key() + ":" + it.value() + "\u000A";
 	}
 
 	sendFrame += "\u000A" + stompMessage.m_message + "\u0000";
 
-	QString sendFrameTemp(sendFrame.c_str());
-	QString sendFrameMessage(sendFrameTemp.data(), sendFrameTemp.size() + 1);
+	QString sendFrameMessage(sendFrame.data(), sendFrame.size() + 1);
 	m_webSocket.sendTextMessage(sendFrameMessage);
 }
 
-void QTWebStompClient::Send(const char* destination, const char* message, const map<std::string, std::string> &headers)
+void QTWebStompClient::Send(const char* destination, const char* message, const QMap<QString, QString> &headers)
 {
-	map<std::string, std::string> headersWithDestination = headers;
-	headersWithDestination[std::string("destination")] = std::string(destination);
+	QMap<QString, QString> headersWithDestination = headers;
+	headersWithDestination[QString("destination")] = QString(destination);
 	StompMessage s("SEND", headersWithDestination, message);
 	Send(s);
 }

@@ -70,7 +70,7 @@ public:
 	- headers: (Optional) if you want to include a specific header, you can do it using this. Pass a map reference.
 	* @author : dmaurino
 	*/
-	void Send(const char* destination, const char* message, const map<std::string, std::string> &headers = map<std::string, std::string>());
+	void Send(const char* destination, const char* message, const QMap<QString, QString> &headers = QMap<QString, QString>());
 
 Q_SIGNALS:
 	void closed();
