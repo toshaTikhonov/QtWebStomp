@@ -20,7 +20,7 @@ StompMessage::StompMessage(const char* rawMessage)
 			first = false;
 			continue;
 		}
-		std::string value = header.substr(++pos, value.length() - pos);
+		std::string value = header.substr(++pos, header.length() - pos);
 		m_headers[key] = value;
 	}
 }

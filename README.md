@@ -1,7 +1,52 @@
 # QtWebStomp
 A C++ implementation of the Stomp protocol through websocket
 
-## How to build in Windows
+## How to build
+
+### Requirements
+- Qt5 or Qt6 with WebSockets module
+- CMake 3.16 or higher (for CMake build)
+- C++11 compatible compiler
+
+### Using CMake (Recommended)
+
+The project supports both Qt5 and Qt6. CMake will automatically detect and use the available Qt version (Qt6 is preferred if both are installed).
+
+#### Linux/macOS
+```bash
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+
+#### Windows
+```bash
+mkdir build
+cd build
+cmake .. -G "Visual Studio 16 2019"  # Or your Visual Studio version
+cmake --build . --config Release
+```
+
+To force a specific Qt version:
+```bash
+cmake .. -DQT_VERSION_MAJOR=5  # Force Qt5
+# or
+cmake .. -DQT_VERSION_MAJOR=6  # Force Qt6
+```
+
+To build without the test project:
+```bash
+cmake .. -DBUILD_TESTS=OFF
+cmake --build .
+```
+
+To install the library:
+```bash
+cmake --build . --target install
+```
+
+### Using Visual Studio (Windows only)
 Open visual studio, click build. As of now, only debug creates the build/bin and build/include structure. In release you have to create it yourself (it's just copy-pasting).
 
 ## How to use
