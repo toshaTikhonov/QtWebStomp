@@ -1,5 +1,7 @@
 #include "QTWebStompClientDll.h"
 #include <QtCore/QDebug>
+#include <QtNetwork/QNetworkRequest>
+#include <QtWebSockets/QWebSocketHandshakeOptions>
 
 StompMessage::StompMessage(const char* rawMessage)
 {
@@ -96,8 +98,14 @@ QTWebStompClient::QTWebStompClient(const char* url, const char* login, const cha
 	connect(&m_webSocket, (&QWebSocket::sslErrors),
 		this, &QTWebStompClient::onSslErrors);
 
-	connect(&m_webSocket, &QWebSocket::disconnected, this, &QTWebStompClient::closed);
-	m_webSocket.open(QUrl(url));
+	connect(&m_webSocket, &QWebSocket::disconnected, this, &QTWebStompClient::onDisconnected);
+	connect(&m_webSocket, &QWebSocket::errorOccurred, this, &QTWebStompClient::onError);
+
+	// Set STOMP subprotocol for WebSocket handshake (Qt 6.4+)
+	QUrl wsUrl{QString{url}};
+	QWebSocketHandshakeOptions options;
+	options.setSubprotocols({QStringLiteral("v12.stomp"), QStringLiteral("v11.stomp"), QStringLiteral("v10.stomp")});
+	m_webSocket.open(wsUrl, options);
 }
 
 
@@ -113,8 +121,8 @@ void QTWebStompClient::onConnected()
 	connectFrame.replace("{Login}", m_login);
 	connectFrame.replace("{Passcode}", m_passcode);
 	QString vHost = "";
-	if (m_vHost) {
-		vHost = "vHost:" + QString(m_vHost) + QString("\u000A");
+	if (m_vHost && m_vHost[0] != '\0') {
+		vHost = "host:" + QString(m_vHost) + QString("\u000A");
 	}
 
 	connectFrame.replace("{vHost}", vHost);
@@ -228,10 +236,10 @@ void QTWebStompClient::onSslErrors(const QList<QSslError> &errors)
 	qFatal("SSL error! I'd show the error description if there were an easy way to convert from enum to string in c++. You'll have to debug.");
 }
 
-void QTWebStompClient::closed()
+void QTWebStompClient::onDisconnected()
 {
 	qDebug() << "Connection closed =(";
-	qFatal("Underlying connection unexpectedly closed =(");
+	emit closed();
 }
 
 void QTWebStompClient::Ack(const StompMessage & s)
@@ -276,4 +284,9 @@ void QTWebStompClient::Send(const char* destination, const char* message, const 
 	headersWithDestination[QString("destination")] = QString(destination);
 	StompMessage s("SEND", headersWithDestination, message);
 	Send(s);
+}
+
+void QTWebStompClient::onError(QAbstractSocket::SocketError error)
+{
+	qDebug() << "WebSocket error:" << error << "-" << m_webSocket.errorString();
 }

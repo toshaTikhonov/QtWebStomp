@@ -14,9 +14,11 @@
 #include <QtCore/QObject>
 #include <QtWebSockets/QWebSocket>
 #include <QtNetwork/QSslError>
+#include <QtNetwork/QAbstractSocket>
 
 class QTWEBSTOMPCLIENTDLL_EXPORT QTWebStompClient : public QObject
 {
+	Q_OBJECT
 
 public:
 
@@ -79,6 +81,8 @@ Q_SIGNALS:
 	void onConnected();
 	void onTextMessageReceived(QString message);
 	void onSslErrors(const QList<QSslError> &errors);
+	void onDisconnected();
+	void onError(QAbstractSocket::SocketError error);
 
 
 private:

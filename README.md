@@ -1,6 +1,16 @@
 # QtWebStomp
 A C++ implementation of the Stomp protocol through websocket
 
+## Варианты использования (Usage Options)
+
+Библиотека поддерживает три способа использования:
+
+1. **Динамическая библиотека (Shared Library)** - по умолчанию
+2. **Статическая библиотека (Static Library)** - для встраивания в исполняемый файл
+3. **Встраивание исходников (Source Embedding)** - прямое включение `.h` и `.cpp` файлов в проект
+
+Подробные инструкции для каждого способа см. в [USAGE.md](USAGE.md)
+
 ## How to build
 
 ### Requirements
@@ -11,6 +21,8 @@ A C++ implementation of the Stomp protocol through websocket
 ### Using CMake (Recommended)
 
 The project supports both Qt5 and Qt6. CMake will automatically detect and use the available Qt version (Qt6 is preferred if both are installed).
+
+📘 **Полное руководство по опциям CMake:** [CMAKE_OPTIONS.md](CMAKE_OPTIONS.md)
 
 #### Linux/macOS
 ```bash
@@ -35,9 +47,27 @@ cmake .. -DQT_VERSION_MAJOR=5  # Force Qt5
 cmake .. -DQT_VERSION_MAJOR=6  # Force Qt6
 ```
 
-To build without the test project:
+To build with test project and examples (default):
+```bash
+cmake ..
+cmake --build .
+```
+
+To build without test project and examples:
 ```bash
 cmake .. -DBUILD_TESTS=OFF
+cmake --build .
+```
+
+To build as static library:
+```bash
+cmake .. -DBUILD_SHARED_LIBS=OFF
+cmake --build .
+```
+
+To build static library with examples:
+```bash
+cmake .. -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=ON
 cmake --build .
 ```
 
